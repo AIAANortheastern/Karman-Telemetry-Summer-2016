@@ -1,3 +1,6 @@
+"""This is a program that reads the data from a strat that is sending out serial data
+All it does is read and export the data, is is a stripped down version of xbeeParse
+Mostly a testing program"""
 import os
 import binascii
 import codecs
@@ -63,10 +66,6 @@ def main():
     report,serialPort = establishSerial(9600,selectComm=True)
     rawDataLine=[]
     
-    
-    
-
-
 
 
     i = 0
@@ -83,8 +82,6 @@ def main():
                         
                         
                         # sensors.updateY(toUpdate[0],toUpdate[1])
-                        
-                            
 #
                         rawDataLine = []
             except KeyboardInterrupt:

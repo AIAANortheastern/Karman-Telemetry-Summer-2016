@@ -1,3 +1,7 @@
+"""
+This program was to test out parsing a fake data stream using regular expressions
+"""
+
 import re
 fN = 'lineOut.txt'
 data = "/Data_One:242^Data_Two:242;\n/Data_One:243^Data_Two:243;'"

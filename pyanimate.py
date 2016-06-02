@@ -6,6 +6,14 @@ email: vanderplas@astro.washington.edu
 website: http://jakevdp.github.com
 license: BSD
 Please feel free to use and modify this, but keep the above information. Thanks!
+
+
+
+--------------------------------------------
+This was a test of mat plot lib live plotting, is is NOT the way that we want to do it
+because it uses a single funciton call (animate) and thus can not consistantly update
+with new serial information
+It is however good to look over to get farmiliar with standard matplot lib animation
 """
 
 import numpy as np
