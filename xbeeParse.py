@@ -86,7 +86,7 @@ def updatePlot(sensors):
     x2 = range(len(sensors.sen1Y))
 
     ax1.clear() 
-    ax1.plot(sensors.sen1X,sensors.sen1Y,sensors.sen2X,sensors.sen2Y)
+    ax1.plot(x1,sensors.sen1Y,x2,sensors.sen2Y)
     plt.pause(.1)
     
 
@@ -150,7 +150,7 @@ def decodehex(data):
         # lines = [i+'0A' for i in lines]
 
 
-def main():
+def main(): 
     report,serialPort = establishSerial(9600,selectComm=True)
     rawDataLine=[]
     sensors = sensorData()
