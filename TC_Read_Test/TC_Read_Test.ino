@@ -1,10 +1,16 @@
 #include <SPI.h>
+#include <MAX6675.h>
 SS = 10
+DO = 12
+CLK = 13
+
+MAX6675 thermocouple(CLK,SS,DO)
+
 void setup() {
   Serial.begin(9600);
   SPI.begin();
   pinMode(SS,OUTPUT);
-  delay(500)
+  delay(500);
 }
 
 /* 
@@ -25,7 +31,10 @@ t- must be grounded for D2 to be low and the TC to work
 
 */
 void loop() {
-  digitalWrite(SS,HIGH)
-  delay(100)
+  // digitalWrite(SS,HIGH)
+  // delay(100)
   // read the sensor data
+    float temp = thermocouple.readCelsius();
+    Serial.print(temp);
+    delay(5000);
 }
