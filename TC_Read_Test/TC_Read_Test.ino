@@ -1,8 +1,7 @@
 #include <SPI.h>
-#include <MAX6675.h>
-SS = 10
-DO = 12
-CLK = 13
+int SS = 10;
+int DO = 12;
+int CLK = 13;
 
 MAX6675 thermocouple(CLK,SS,DO)
 

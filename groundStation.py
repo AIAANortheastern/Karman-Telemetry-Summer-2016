@@ -1,9 +1,15 @@
 """
-xbeeParse.py is the main data logging program created to decode the data streams
+groundStating.py is the main data logging program created to decode the data streams
 It reads from serial port, decodes the message, then live displays it
 
-Current problems: The program can crash my cpmputer (mac) if is recieves bad serial data
+Current problems: The program can crash my computer (mac) if is recieves bad serial data
     -believe to be coming from updating the graph is a hugely cpu intensive process
+
+To implement: 1) Fake serial stream that mimics what the downlink will consist of
+                for testing purposes
+            2) Save the data stream to external memory
+            3) Configure serial port connection on windows (then a PI)
+
 """
 
 
@@ -22,6 +28,9 @@ import atexit
 # comment it out if you have not downloaded it, it is non-essential
 # from customDebug import *
 
+# Enable TEST_SERIAL
+TESTSERIAL = False
+
 fn = "XbeeDataDump02.log"
 ser = "fakeSerial.txt"
 i = 0
@@ -30,7 +39,9 @@ dataForamt = '/Data One:8^Data Two:8;'
 ActualFormat = "/Data_One:242^Data_Two:242;\n/Data_One:243^Data_Two:243;'"
 # Set this to a default serial port that you know for fast testing
 DEFAULT_SERIAL_PORT = '/dev/tty.usbserial-DA01IFE8'
+DELIMITER = "^"
 ENDBYTE = b';'
+STARTBYTE = "/"
 
 # Initialization of the plot, was not sure how to do it locally, so used global vars
 style.use('fivethirtyeight')
@@ -128,7 +139,7 @@ def updatePlot(sensors):
 def reParser(strIn):
     
     # Will be the new way to implement parsing when start and delimiters are changed
-    # regex = r"" + re.escape(startChar) + "(.*?) + re.escape(DELIMITER)"
+    # regex = r"" + re.escape(STARTBYTE) + "(.*?) + re.escape(DELIMITER)"
 
     fullData1 = re.findall(r'/(.*?)\^',strIn)[0]
     fullData2 = re.findall(r'\^(.*?)\;',strIn)[0]
@@ -183,6 +194,10 @@ def decodehex(data):
                 parse(i)
         # lines = [i+'0A' for i in lines]
 
+def fakeSerialStream(numData):
+    for i in range(numData):
+        
+    pass
 
 def main(): 
     """Main code execution"""
