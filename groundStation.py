@@ -9,7 +9,6 @@ To implement: 1) Fake serial stream that mimics what the downlink will consist o
                 for testing purposes
             2) Save the data stream to external memory
             3) Configure serial port connection on windows (then a PI)
-
 """
 
 
