@@ -195,13 +195,13 @@ def decodehex(data):
 
 def fakeSerialStream(numData):
     for i in range(numData):
-        
+        pass
     pass
 
 def main(): 
     """Main code execution"""
     
-    report,serialPort = establishSerial(9600,selectComm=True)
+    report,serialPort = establishSerial(57600,selectComm=True)
     
     # On a crash or exit, this should close the serial port    
     atexit.register(onClose(serialPort))
