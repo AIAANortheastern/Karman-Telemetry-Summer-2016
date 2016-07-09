@@ -36,6 +36,8 @@ i = 0
 # These data format strings are just for refrence and testing
 dataForamt = '/Data One:8^Data Two:8;'
 ActualFormat = "/Data_One:242^Data_Two:242;\n/Data_One:243^Data_Two:243;'"
+BinaryFormat = 'TcTcTc'
+
 # Set this to a default serial port that you know for fast testing
 DEFAULT_SERIAL_PORT = '/dev/tty.usbserial-DA01IFE8'
 DELIMITER = "^"
