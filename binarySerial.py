@@ -71,7 +71,7 @@ def decodeData(fName,numLoops):
     with open(fName,'rb') as f:
         for i in range(numLoops):
             # retrievedData = f.read(8*(numData + 2))
-            retrievedData = f.read(96)
+            retrievedData = f.read(8*(numData +2))
 
             print(sys.getsizeof(retrievedData))
             c1 = unpack(retrievedData)
@@ -83,8 +83,8 @@ def main():
     clearFile(outF)
     data = genData(numData)
     for i in range(dataLoops):
-        # if i = 0:
-            # data = updateData(data)
+        if i > 0:
+            data = updateData(data)
         dataStream = makeDataStream(data)
         # [print(sys.getsizeof(x)) for x in dataStream]
         # [print(type(x)) for x in dataStream]
