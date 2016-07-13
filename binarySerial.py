@@ -6,7 +6,7 @@ could use dictionaries to form key and order of data stream being passed
 
 def cs(inDat):
     return sys.getsizeof(inDat)
-
+# Start and end chars currently not used
 startChar = float(1111111111)
 endChar = float(1010101010)
 outF = 'dataStreamEx.txt'
@@ -27,6 +27,7 @@ def updateData(dataLen):
 
 
 def makeDataStream(*args):
+    # Adds a start and end char to the data stream
     ds = []
     ds.append(startChar)
     for i,ins in enumerate(args):
@@ -43,7 +44,7 @@ def makeDataStream(*args):
 #     fmt = ''.join('i' if isinstance(x, int) else 'd' for x in lst)
 #     return struct.pack(fmt, *lst), fmt
 def pack_all(dataList):
-    fmt = ''.join('d' for x in range(numData+2))
+    fmt = ''.join('d' for x in range(numData))
     return struct.pack(fmt, *dataList)
 
 
@@ -63,7 +64,7 @@ def writeData(fName,data):
 
 
 def unpack(bl):
-    fmt = ''.join('d' for x in range(numData+2))
+    fmt = ''.join('d' for x in range(numData))
     return struct.unpack(fmt,bl)   
     
 def decodeData(fName,numLoops):
@@ -71,7 +72,7 @@ def decodeData(fName,numLoops):
     with open(fName,'rb') as f:
         for i in range(numLoops):
             # retrievedData = f.read(8*(numData + 2))
-            retrievedData = f.read(8*(numData +2))
+            retrievedData = f.read(8*(numData))
 
             print(sys.getsizeof(retrievedData))
             c1 = unpack(retrievedData)
@@ -86,12 +87,8 @@ def main():
         if i > 0:
             data = updateData(data)
         dataStream = makeDataStream(data)
-        # [print(sys.getsizeof(x)) for x in dataStream]
-        # [print(type(x)) for x in dataStream]
-        dataPacket = pack_all(dataStream)
-        print(type(dataPacket),sys.getsizeof(dataPacket))
-        # print(dataStream,dataPacket)
-        writeData(outF,dataPacket)
+        # dataPacket = pack_all(dataStream)
+        writeData(outF,dataStream)
     
     decodeData(outF,dataLoops)
 
