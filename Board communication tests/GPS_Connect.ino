@@ -49,5 +49,5 @@ SIGNAL(TIMER0_COMPA_VECT){
             if (c) UDR0 = c;
         // writing direct to the udro is faster tahn serial print
         // only 1 character a a time can be written
-    
+
 }
