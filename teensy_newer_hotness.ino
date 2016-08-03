@@ -1,11 +1,11 @@
 #include <string.h>
 
-#define DATA_SIZE           4
-#define NUM_DATA            3
-#define NUM_BYTES_TO_SEND   12
-#define TEMP_0_INDEX        0
-#define TEMP_1_INDEX        4
-#define TEMP_2_INDEX        8
+#define DATA_SIZE           (4)
+#define NUM_DATA            (3)
+#define NUM_BYTES_TO_SEND   (12)
+#define TEMP_0_INDEX        (0)
+#define TEMP_1_INDEX        (4)
+#define TEMP_2_INDEX        (8)
 
 
 #define TEMP1_BITMASK (0x8000)
@@ -15,7 +15,7 @@
 #define FALSE false
 #define TRUE true
 
-#define XBEE_CTS_PIN        6
+#define XBEE_CTS_PIN        (6)
 
 #define DEBUG_MODE
 
