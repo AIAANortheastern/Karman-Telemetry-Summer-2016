@@ -4,7 +4,8 @@
  Author:	Andrew
 */
 
-#include <Adafruit_MAX31855.h>
+#include "Thermocouple_Max31855.h"
+//#include <Adafruit_MAX31855.h>
 #include <string.h>
 #include <SPI.h>
 
@@ -19,9 +20,7 @@
 #define XBEE_BAUD_RATE (57600)
 #define XBEE_CONFIG (SERIAL_8N1)
 
-#define MAXDO (11)
-#define MAXCS (14)
-#define MAXCLK (13)
+#define CS_TCA1 (4)
 
 #define TEMP1_BITMASK (0x8000)
 #define TEMP2_BITMASK (0x4000)
@@ -34,6 +33,7 @@
 
 #define DEBUG_MODE
 
+SPISettings SPI_TCA1(1000000, MSBFIRST, SPI_MODE0);
 
 
 // XBEE TX_1 = Pin 1		Purple 7 on logic analyzer
@@ -60,12 +60,17 @@ const byte min_millis_btwn_send = 40;
 byte send_string[sizeof(send_data_t) / sizeof(byte)];
 elapsedMillis sinceSend;
 
-Adafruit_MAX31855 thermocouple1(MAXCLK, MAXCS, MAXDO);
+// Call hardware spi constructor for TC1
+Thermocouple_Max31855 thermocouple1(CS_TCA1, SPI_TCA1);
+
 
 void setup() {
 	//setup sensors and get ready for transmit loop
 	//Configure Serial1
 	XBEE_PORT.begin(XBEE_BAUD_RATE, XBEE_CONFIG);
+
+	SPI.begin();
+
 
 }
 
@@ -128,7 +133,7 @@ bool get_temperature(byte temp_number)
 	{
 	case 1:
 		//Serial.println(thermocouple1.readInternal());
-		gSendData.temp1 = (float)thermocouple1.readCelsius();
+		thermocouple1.getTemperature(gSendData.temp1);
 		gSendData.poll_flags |= TEMP1_BITMASK;
 		retVal = true;
 		break;
