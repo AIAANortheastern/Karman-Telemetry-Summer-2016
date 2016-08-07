@@ -13,7 +13,7 @@
 
 #define DATA_SIZE           (4)
 #define NUM_DATA            (3)
-#define NUM_BYTES_TO_SEND   (16)
+#define NUM_BYTES_TO_SEND   (16) // TODO: Update this every time new sensor is added
 #define TEMP_0_INDEX        (0)
 #define TEMP_1_INDEX        (4)
 #define TEMP_2_INDEX        (8)
@@ -29,6 +29,12 @@
 #define TEMP1_BITMASK       (0x8000)
 #define TEMP2_BITMASK       (0x4000)
 #define TEMP3_BITMASK       (0x2000)
+#define ACCEL_X_BITMASK     (0x1000)
+#define ACCEL_Y_BITMASK     (0x0800)
+#define ACCEL_Z_BITMASK     (0x0400)
+#define ROLL_BITMASK        (0x0200)
+#define PITCH_BITMASK       (0x0100)
+#define YAW_BITMASK         (0x0080)
 
 #define MILIS_BTWN_SEND     (40)
 #define MILIS_BTWN_WRITE    (100)
@@ -113,9 +119,10 @@ void send_check()
     if (sinceSend > MILIS_BTWN_SEND && digitalRead(XBEE_CTS_PIN) == LOW)
     {
         int numBytes = sizeof(send_string) / sizeof(byte);
-        float debugFloat;
         memcpy(send_string, &gSendData, numBytes);
         XBEE_PORT.write(send_string, NUM_BYTES_TO_SEND);
+#ifdef DEBUG_MODE
+        float debugFloat;
         for (int i = 0; i < numBytes / 4; i++)
         {
             memcpy(&debugFloat, (&send_string[4 * i]), 4);
@@ -125,7 +132,8 @@ void send_check()
         Serial.print(gSendData.poll_flags);
         Serial.print('\n');
         sinceSend = 0;
-        gSendData.poll_flags &= 0;
+#endif
+        gSendData.poll_flags &= 0; //Clear flags
     }
     return;
 
@@ -176,6 +184,9 @@ void write_check()
                 currTime = now();
                 write_string = String(currTime) + ',' + String(gSendData.temp1) + ',' + String(gSendData.temp2) + ',' \
                     + String(gSendData.temp3); // Add additional data to be logged here
+#ifdef DEBUG_MODE
+                Serial.println(String("SD card Data: \n" + write_string));
+#endif
                 data_file.println(write_string);
                 data_file.close();
             }
@@ -188,5 +199,6 @@ void write_check()
         {
             Serial.println("Error finding data file");
         }
+        sinceWrite = 0;
     }
 }
