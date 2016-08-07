@@ -1,7 +1,7 @@
 /*
- Name:		NewerHotness.ino
- Created:	8/2/2016 7:40:04 PM
- Author:	Andrew Kaster
+ Name:      NewerHotness.ino
+ Created:   8/2/2016 7:40:04 PM
+ Author:    Andrew Kaster
 */
 
 #include "Thermocouple_Max31855.h"
@@ -18,25 +18,25 @@
 #define TEMP_1_INDEX        (4)
 #define TEMP_2_INDEX        (8)
 
-#define XBEE_PORT			(Serial1)
-#define XBEE_BAUD_RATE		(57600)
-#define XBEE_CONFIG			(SERIAL_8N1)
+#define XBEE_PORT           (Serial1)
+#define XBEE_BAUD_RATE      (57600)
+#define XBEE_CONFIG         (SERIAL_8N1)
 
-#define CS_TCA1				(4)
+#define CS_TCA1             (4)
 #define XBEE_CTS_PIN        (6)
-#define CS_SDCARD			(8) // TODO put proper pin for SD card chip select
+#define CS_SDCARD           (8) // TODO put proper pin for SD card chip select
 
-#define TEMP1_BITMASK		(0x8000)
-#define TEMP2_BITMASK		(0x4000)
-#define TEMP3_BITMASK		(0x2000)
+#define TEMP1_BITMASK       (0x8000)
+#define TEMP2_BITMASK       (0x4000)
+#define TEMP3_BITMASK       (0x2000)
 
-#define MILIS_BTWN_SEND		(40)
-#define MILIS_BTWN_WRITE	(100)
+#define MILIS_BTWN_SEND     (40)
+#define MILIS_BTWN_WRITE    (100)
 
 #define DEBUG_MODE
 
-// XBEE TX_1 = Pin 1		Purple 7 on logic analyzer
-// XBEE RX_1 = Pin 0		Blue 6  on logic analyzer
+// XBEE TX_1 = Pin 1        Purple 7 on logic analyzer
+// XBEE RX_1 = Pin 0        Blue 6  on logic analyzer
 
 //SPI Clk Pin 13
 //SPI DataOut Pin 11
@@ -44,12 +44,12 @@
 
 //SPI Clock speed max ~1-2 MHz (4 for yolo)
 
-struct send_data_s{
-	float temp1;
-	float temp2;
-	float temp3;
-	short poll_flags;
-	short padding;
+struct send_data_s {
+    float temp1;
+    float temp2;
+    float temp3;
+    short poll_flags;
+    short padding;
 };
 
 typedef struct send_data_s send_data_t;
@@ -70,94 +70,94 @@ Thermocouple_Max31855 thermocouple1(CS_TCA1, SPI_TCA1);
 
 void setup() {
 
-	//setup sensors and get ready for transmit loop
-	//Configure Serial1
-	XBEE_PORT.begin(XBEE_BAUD_RATE, XBEE_CONFIG);
+    //setup sensors and get ready for transmit loop
+    //Configure Serial1
+    XBEE_PORT.begin(XBEE_BAUD_RATE, XBEE_CONFIG);
 
-	SPI.begin();
+    SPI.begin();
 
-	// setup SD card recording.
-	// Note begin() uses the SPI interface
-	// to do setup communications with the sd card.
-	pinMode(CS_SDCARD, OUTPUT);
-	if (!SD.begin(CS_SDCARD)) {
-		Serial.println("Failed to Initialize SD card");
-	}
+    // setup SD card recording.
+    // Note begin() uses the SPI interface
+    // to do setup communications with the sd card.
+    pinMode(CS_SDCARD, OUTPUT);
+    if (!SD.begin(CS_SDCARD)) {
+        Serial.println("Failed to Initialize SD card");
+    }
 }
 
 void loop()
 {
-	//get data and try to send after each check
+    //get data and try to send after each check
 
-	(void)get_temperature(1);
-	//Try to send data
-	send_check();
-	//Try to write data
-	write_check();
+    (void)get_temperature(1);
+    //Try to send data
+    send_check();
+    //Try to write data
+    write_check();
 
-	(void)get_temperature(2);
+    (void)get_temperature(2);
 
-	send_check();
-	write_check();
+    send_check();
+    write_check();
 
-	(void)get_temperature(3);
+    (void)get_temperature(3);
 
-	send_check();
-	write_check();
+    send_check();
+    write_check();
 
 }
 
 
 void send_check()
 {
-	if (sinceSend > MILIS_BTWN_SEND && digitalRead(XBEE_CTS_PIN) == LOW)
-	{
-		int numBytes = sizeof(send_string) / sizeof(byte);
-		float debugFloat;
-		memcpy(send_string, &gSendData, numBytes);
-		XBEE_PORT.write(send_string, NUM_BYTES_TO_SEND); 
-		for (int i = 0; i < numBytes / 4; i++)
-		{
-			memcpy(&debugFloat, (&send_string[4 * i]), 4);
-			Serial.print(debugFloat);
-			Serial.print('\n');
-		}
-		Serial.print(gSendData.poll_flags);
-		Serial.print('\n');
-		sinceSend = 0;
-		gSendData.poll_flags &= 0;
-	}
-	return;
+    if (sinceSend > MILIS_BTWN_SEND && digitalRead(XBEE_CTS_PIN) == LOW)
+    {
+        int numBytes = sizeof(send_string) / sizeof(byte);
+        float debugFloat;
+        memcpy(send_string, &gSendData, numBytes);
+        XBEE_PORT.write(send_string, NUM_BYTES_TO_SEND);
+        for (int i = 0; i < numBytes / 4; i++)
+        {
+            memcpy(&debugFloat, (&send_string[4 * i]), 4);
+            Serial.print(debugFloat);
+            Serial.print('\n');
+        }
+        Serial.print(gSendData.poll_flags);
+        Serial.print('\n');
+        sinceSend = 0;
+        gSendData.poll_flags &= 0;
+    }
+    return;
 
 }
 
 bool get_temperature(byte temp_number)
 {
-	bool retVal = false;
-	//TODO get the temp
-	//gSendData.temp<N> = getMyDataPls();
-	switch (temp_number)
-	{
-	case 1:
-		//Serial.println(thermocouple1.readInternal());
-		thermocouple1.getTemperature(gSendData.temp1);
-		gSendData.poll_flags |= TEMP1_BITMASK;
-		retVal = true;
-		break;
-	case 2:
-		gSendData.temp2 = 6.28;
-		gSendData.poll_flags |= TEMP2_BITMASK;
-		retVal = true;
-		break;
-	case 3:
-		gSendData.temp3 = 9.42;
-		gSendData.poll_flags |= TEMP3_BITMASK;
-		retVal = true;
-		break;
-	default:
-		break;
-	}
-	return retVal;
+    bool retVal = false;
+    //TODO get the temp
+    //gSendData.temp<N> = getMyDataPls();
+    switch (temp_number)
+    {
+    case 1:
+        //Serial.println(thermocouple1.readInternal());
+        thermocouple1.getTemperature(gSendData.temp1);
+        gSendData.poll_flags |= TEMP1_BITMASK;
+        retVal = true;
+        break;
+    case 2:
+        gSendData.temp2 = 6.28;
+        gSendData.poll_flags |= TEMP2_BITMASK;
+        retVal = true;
+        break;
+    case 3:
+        gSendData.temp3 = 9.42;
+        gSendData.poll_flags |= TEMP3_BITMASK;
+        retVal = true;
+        break;
+    default:
+        break;
+    }
+    return retVal;
 }
 
 
@@ -166,27 +166,27 @@ bool get_temperature(byte temp_number)
 // With a timestamp instead of poll flags
 void write_check()
 {
-	if (sinceWrite > MILIS_BTWN_WRITE)
-	{
-		if (SD.exists("data.csv"))
-		{
-			data_file = SD.open("data.csv", FILE_WRITE);
-			if (data_file)
-			{
-				currTime = now();
-				write_string = String(currTime) + ',' + String(gSendData.temp1) + ',' + String(gSendData.temp2) + ',' \
-					+ String(gSendData.temp3); // Add additional data to be logged here
-				data_file.println(write_string);
-				data_file.close();
-			}
-			else
-			{
-				Serial.println("Error opening data file");
-			}
-		}
-		else
-		{
-			Serial.println("Error finding data file");
-		}
-	}
+    if (sinceWrite > MILIS_BTWN_WRITE)
+    {
+        if (SD.exists("data.csv"))
+        {
+            data_file = SD.open("data.csv", FILE_WRITE);
+            if (data_file)
+            {
+                currTime = now();
+                write_string = String(currTime) + ',' + String(gSendData.temp1) + ',' + String(gSendData.temp2) + ',' \
+                    + String(gSendData.temp3); // Add additional data to be logged here
+                data_file.println(write_string);
+                data_file.close();
+            }
+            else
+            {
+                Serial.println("Error opening data file");
+            }
+        }
+        else
+        {
+            Serial.println("Error finding data file");
+        }
+    }
 }
