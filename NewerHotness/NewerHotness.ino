@@ -4,6 +4,11 @@
  Author:    Andrew Kaster
 */
 
+#include <Adafruit_Sensor.h>
+#include <Adafruit_LSM303_U.h>
+#include <Adafruit_L3GD20_U.h>
+#include <Adafruit_BMP085_U.h>
+#include <Adafruit_10DOF.h>
 #include "Thermocouple_Max31855.h"
 #include <string.h>
 #include <SPI.h>
@@ -48,10 +53,13 @@
 #define ACCEL_Y_BITMASK     (0x0020)
 #define ACCEL_Z_BITMASK     (0x0010)
 
+//TODO GOAL: 20Hz for both. Values will need tweaking for sure
 #define MILIS_BTWN_SEND     (50)
 #define MILIS_BTWN_WRITE    (50)
 
 #define DEBUG_MODE
+
+//OLD INFO below. Double check with diagram before trusting
 
 // XBEE TX_1 = Pin 1        Purple 7 on logic analyzer
 // XBEE RX_1 = Pin 0        Blue 6  on logic analyzer
@@ -63,25 +71,13 @@
 
 //SPI Clock speed max ~1-2 MHz (4 for yolo)
 
-struct vector_double_s
-{
-    double x;
-    double y;
-    double z;
-};
-
-typedef vector_double_s vector_double_t;
-
 struct tenDOF_data_s
 {
-    double pressure;
-    double altitude;
-    vector_double_t accel;
-    vector_double_t mag;
-    vector_double_t gyro;
-    double fusion_roll;
-    double fusion_pitch;
-    double fusion_heading;
+    float *pressure;
+    sensors_vec_t *accel;
+    sensors_vec_t *mag;
+    sensors_vec_t *gyro;
+    sensors_vec_t orientation;
 };
 
 typedef tenDOF_data_s tenDOF_data_t;
@@ -124,6 +120,19 @@ enum karmanDataEnum
     ACCEL_X,
     ACCEL_Y,
     ACCEL_Z,
+    PRESSURE,
+    ACCEL_10DOF_X,
+    ACCEL_10DOF_Y,
+    ACCEL_10DOF_Z,
+    MAG_X,
+    MAG_Y,
+    MAG_Z,
+    ROT_X,
+    ROT_Y,
+    ROT_Z,
+    ROLL,
+    PITCH,
+    HEADING,
     NUM_KARMAN_DATA,
 };
 
@@ -133,8 +142,9 @@ typedef struct
     send_data_t write_send;
 }write_data_t;
 
-send_data_t gSendData;
+//Custom globals for Karman-specific stuff
 write_data_t gWriteData;
+send_data_t *gSendData = &(gWriteData.write_send);
 String write_string;
 elapsedMillis sinceSend;
 elapsedMillis sinceWrite;
@@ -153,6 +163,18 @@ Thermocouple_Max31855 thermocouple1(CS_TCA1, SPI_TCA1);
 Thermocouple_Max31855 thermocouple2(CS_TCA2, SPI_TCA2);
 Thermocouple_Max31855 thermocouple3(CS_TCA3, SPI_TCA3);
 
+//Call constructors for 10DOF chips
+Adafruit_BMP085_Unified         bmp085(1);
+Adafruit_L3GD20_Unified         l3gd20(2);
+Adafruit_LSM303_Accel_Unified   lsm303_accel(3);
+Adafruit_LSM303_Mag_Unified     lsm303_mag(4);
+Adafruit_10DOF                  objTenDOF();
+
+//Adafruit unified sensor library global sensor events
+sensors_event_t                pressureBMP085;
+sensors_event_t                gyroL3GD20;
+sensors_event_t                accelLSM303;
+sensors_event_t                magLSM303;
 
 
 void setup() {
@@ -191,6 +213,34 @@ void setup() {
         dummyClear.close();
     }
 
+    //Pressure --> Altitude
+    //Also temperature
+    bmp085.begin(BMP085_MODE_ULTRALOWPOWER);
+
+    //Rotation rate in Rad/Sec U,V,W
+    l3gd20.begin(GYRO_RANGE_250DPS);
+    l3gd20.enableAutoRange(true); //This will auto scale our gryo if it's saturating
+
+    //Acceleration X,Y,Z
+    lsm303_accel.begin();
+    lsm303_accel.enableAutoRange(true); //This will auto scale our accelerometer if it's saturating
+   
+    //Magnetic field strength X,Y,Z
+    lsm303_mag.begin();
+    lsm303_mag.enableAutoRange(true); //This will auto scale our magnetometer if it's saturating
+
+    //TODO Set sealevel pressure
+    /* pseudocode:
+        wait a few seconds
+        get pressure event
+        float sealevelPressure = event.pressure;
+    */
+
+    //Assign global pointers into sensors events
+    gWriteData.write_only.pressure  =    &(pressureBMP085.pressure);
+    gWriteData.write_only.accel     =    &(accelLSM303.acceleration);
+    gWriteData.write_only.mag       =    &(magLSM303.magnetic);
+    gWriteData.write_only.gyro      =    &(gyroL3GD20.gyro);
 }
 
 void loop()
@@ -211,20 +261,20 @@ void send_check()
     if (sinceSend > MILIS_BTWN_SEND && digitalRead(XBEE_CTS_PIN) == LOW)
     {
         int numBytes = sizeof(send_data_t) / sizeof(byte);
-        XBEE_PORT.write(gSendData.full, NUM_BYTES_TO_SEND);
+        XBEE_PORT.write((gSendData->full), NUM_BYTES_TO_SEND);
 #ifdef DEBUG_MODE
         float debugFloat;
         for (int i = 0; i < numBytes / 4; i++)
         {
-            memcpy(&debugFloat, (&(gSendData.full[4 * i])), 4);
+            memcpy(&debugFloat, (&(gSendData->full[4 * i])), 4);
             Serial.print(debugFloat);
             Serial.print('\n');
         }
-        Serial.print(gSendData.component.poll_flags);
+        Serial.print(gSendData->component.poll_flags);
         Serial.print('\n');
         sinceSend = 0;
 #endif
-        gSendData.component.poll_flags &= 0; //Clear flags
+        gSendData->component.poll_flags &= 0; //Clear flags
     }
     return;
 
@@ -237,66 +287,67 @@ bool get_karman_data(byte data_number)
     switch (data_number)
     {
     case TEMP1:
-        thermocouple1.getTemperature(gSendData.component.temp1);
-        gSendData.component.poll_flags |= TEMP1_BITMASK;
+        thermocouple1.getTemperature(gSendData->component.temp1);
+        gSendData->component.poll_flags |= TEMP1_BITMASK;
         retVal = true;
         break;
     case TEMP2:
-        thermocouple2.getTemperature(gSendData.component.temp2);
-        gSendData.component.poll_flags |= TEMP2_BITMASK;
+        thermocouple2.getTemperature(gSendData->component.temp2);
+        gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
         break;
     case TEMP3:
-        thermocouple3.getTemperature(gSendData.component.temp3);
-        gSendData.component.poll_flags |= TEMP3_BITMASK;
+        thermocouple3.getTemperature(gSendData->component.temp3);
+        gSendData->component.poll_flags |= TEMP3_BITMASK;
         retVal = true;
         break;
     case TEMP_10DOF:
-        gSendData.component.temp_10dof = 25.0;
-        gSendData.component.poll_flags |= TEMP_10DOF_BITMASK;
+        gSendData->component.temp_10dof = 25.0;
+        gSendData->component.poll_flags |= TEMP_10DOF_BITMASK;
         retVal = true;
         break;
     case ALT_PRESS:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= ALT_PRESS_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= ALT_PRESS_BITMASK;
         retVal = true;
         break;
     case ALT_STRAT:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= ALT_STRAT_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= ALT_STRAT_BITMASK;
         retVal = true;
         break;
     case ALT_GPS:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= ALT_GPS_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= ALT_GPS_BITMASK;
         retVal = true;
         break;
     case LAT:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= LAT_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= LAT_BITMASK;
         retVal = true;
         break;
     case LON:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= LON_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= LON_BITMASK;
         retVal = true;
         break;
     case ACCEL_X:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= TEMP2_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
         break;
     case ACCEL_Y:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= TEMP2_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
         break;
     case ACCEL_Z:
-        gSendData.component.temp2 = 6.28;
-        gSendData.component.poll_flags |= TEMP2_BITMASK;
+        gSendData->component.temp2 = 6.28;
+        gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
         break;
     default:
+        //TODO add extra 10dof items combine some cases as they access the same chip
         break;
     }
     return retVal;
@@ -310,12 +361,12 @@ void write_check()
 {
     if (sinceWrite > MILIS_BTWN_WRITE)
     {
-        memcpy(&gWriteData, &gSendData, sizeof(send_data_t));
-        //TODO get write-only data from 10dof
+        //TODO get write-only 10DOF data
         File data_file = SD.open(dataFileName.c_str(), FILE_WRITE);
         if (data_file)
         {
             currTime = millis();
+            //Fill write_string with data from gWriteData
             getFormattedWriteString(&write_string);
 #ifdef DEBUG_MODE
             Serial.println(String("SD card Data: \n" + write_string));
@@ -347,19 +398,18 @@ void getFormattedWriteString(String *pWriteString)
     *pWriteString += String(gWriteData.write_send.component.accel_y) + ',';
     *pWriteString += String(gWriteData.write_send.component.accel_z) + ',';
     *pWriteString += String(gWriteData.write_send.component.poll_flags, HEX) + ',';
-    *pWriteString += String(gWriteData.write_only.pressure) + ',';
-    *pWriteString += String(gWriteData.write_only.altitude) + ',';
-    *pWriteString += String(gWriteData.write_only.fusion_heading) + ',';
-    *pWriteString += String(gWriteData.write_only.fusion_pitch) + ',';
-    *pWriteString += String(gWriteData.write_only.fusion_roll) + ',';
-    *pWriteString += String(gWriteData.write_only.accel.x) + ',';
-    *pWriteString += String(gWriteData.write_only.accel.y) + ',';
-    *pWriteString += String(gWriteData.write_only.accel.z) + ',';
-    *pWriteString += String(gWriteData.write_only.mag.x) + ',';
-    *pWriteString += String(gWriteData.write_only.mag.y) + ',';
-    *pWriteString += String(gWriteData.write_only.mag.z) + ',';
-    *pWriteString += String(gWriteData.write_only.gyro.x) + ',';
-    *pWriteString += String(gWriteData.write_only.gyro.y) + ',';
-    *pWriteString += String(gWriteData.write_only.gyro.z) + ',';
+    *pWriteString += String(*(gWriteData.write_only.pressure)) + ',';
+    *pWriteString += String(gWriteData.write_only.orientation.roll) + ',';
+    *pWriteString += String(gWriteData.write_only.orientation.pitch) + ',';
+    *pWriteString += String(gWriteData.write_only.orientation.heading) + ',';
+    *pWriteString += String(gWriteData.write_only.accel->x) + ',';
+    *pWriteString += String(gWriteData.write_only.accel->y) + ',';
+    *pWriteString += String(gWriteData.write_only.accel->z) + ',';
+    *pWriteString += String(gWriteData.write_only.mag->x) + ',';
+    *pWriteString += String(gWriteData.write_only.mag->y) + ',';
+    *pWriteString += String(gWriteData.write_only.mag->z) + ',';
+    *pWriteString += String(gWriteData.write_only.gyro->x) + ',';
+    *pWriteString += String(gWriteData.write_only.gyro->y) + ',';
+    *pWriteString += String(gWriteData.write_only.gyro->z) + ',';
     return;
 }
