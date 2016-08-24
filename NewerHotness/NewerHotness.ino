@@ -11,9 +11,9 @@
 #include <Adafruit_10DOF.h>
 #include "Thermocouple_Max31855.h"
 #include <string.h>
+#include <stdlib.h>
 #include <SPI.h>
 #include <SD.h>
-
 
 #define NUM_BYTES_TO_SEND   (52)
 
@@ -22,7 +22,9 @@
 #define XBEE_CONFIG         (SERIAL_8N1)
 
 #define STRAT_PORT          (Serial2)
-//TODO strat config
+#define STRAT_BAUD_RATE     (9600)
+#define STRAT_CONFIG        (SERIAL_8N1)
+
 #define GPS_PORT            (Serial3)
 //TODO gps config
 
@@ -93,7 +95,7 @@ struct send_data_s {
     float temp3;
     float temp_10dof;
     float alt_press;
-    float alt_strat;
+    int32_t alt_strat;
     float alt_gps;
     float lat;
     float lon;
@@ -196,8 +198,10 @@ sensors_event_t                magLSM303;
 void setup() {
 
     //setup sensors and get ready for transmit loop
-    //Configure Serial1
+    //Configure XBEE serial port
     XBEE_PORT.begin(XBEE_BAUD_RATE, XBEE_CONFIG);
+    //Configure StratoLogger serial port
+    STRAT_PORT.begin(STRAT_BAUD_RATE, STRAT_CONFIG);
 
    SPI.begin();
 
@@ -341,11 +345,11 @@ bool get_karman_data(byte data_number)
         retVal = true;
         break;
     case STRATOLOGGER: /* Serial */
-        gSendData->component.alt_strat = 6.28;
+        gSendData->component.alt_strat = parseStratologger();
         gSendData->component.poll_flags |= ALT_STRAT_BITMASK;
         retVal = true;
         break;
-    case GPS: /* SPI */
+    case GPS: /* SPI? Serial? I've lost track */
         gSendData->component.alt_gps = 6.28;
         gSendData->component.lat = 45.0;
         gSendData->component.lon = 75.0;
@@ -389,6 +393,51 @@ bool get_karman_data(byte data_number)
     }
     return retVal;
 }
+
+int32_t parseStratologger(void)
+{
+    int32_t altitude = 0;
+    int32_t tempAlt = 0;
+    /* Declare these char related variables static so they're preserved between function calls*/
+    /*delimit at carriage return, we want to call atoi on the returned string */
+    static char delim = '\r';
+    static char *token;
+    /*Worst case, we're at 10,000 ft. That's 7 Chars
+    *"10000\r\n" So if we grab double that, we should get one good value minimum 
+    */
+    static char rawStratString[15];
+
+    STRAT_PORT.readBytes(rawStratString, 14); 
+    rawStratString[10] = '\0'; /* Don't forget the null character!*/
+
+    /* Get first token */
+    token = strtok(rawStratString, &delim);
+    while (token != NULL)
+    {
+        /* Is the new integerized token better than the old one? 
+         * Ugh wait this will make the altiude garbage on the way down...
+         * TODO will it actually though? I'm not sure
+         */
+        tempAlt = atoi(token);
+        if (tempAlt > altitude)
+        {
+            altitude = tempAlt;
+        }
+        token = strtok(NULL, &delim);
+    }
+
+    if (altitude > 0)
+    {
+        /* Did we get good data?*/
+        return altitude;
+    }
+    else
+    {
+        /* We got garbage :( Just assume we didn't move*/
+        return  gSendData->component.alt_strat;
+    }
+}
+
 
 
 
