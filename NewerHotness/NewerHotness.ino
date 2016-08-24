@@ -43,7 +43,7 @@
 #define TEMP1_BITMASK       (0x8000)
 #define TEMP2_BITMASK       (0x4000)
 #define TEMP3_BITMASK       (0x2000)
-#define TEMP_10DOF_BITMASK  (0x1000)
+#define PRESS_TEMP_BITMASK  (0x1000)
 #define ALT_PRESS_BITMASK   (0x0800)
 #define ALT_STRAT_BITMASK   (0x0400)
 #define ALT_GPS_BITMASK     (0x0200)
@@ -52,6 +52,10 @@
 #define ACCEL_X_BITMASK     (0x0040)
 #define ACCEL_Y_BITMASK     (0x0020)
 #define ACCEL_Z_BITMASK     (0x0010)
+#define ACCEL_10DOF_BITMASK (0x0008)
+#define MAG_10DOF_BITMASK   (0x0004)
+#define GYRO_10DOF_BITMASK  (0x0002)
+#define DATA_SENT_BITMASK   (0x0001)
 
 //TODO GOAL: 20Hz for both. Values will need tweaking for sure
 #define MILIS_BTWN_SEND     (50)
@@ -100,15 +104,7 @@ struct send_data_s {
     short padding;
 };
 
-
-typedef union {
-    send_data_s component;
-    byte        full[NUM_BYTES_TO_SEND];
-}send_data_t;
-
-enum karmanDataEnum
-{
-    TEMP1 = 0,
+/*  TEMP1,
     TEMP2,
     TEMP3,
     TEMP_10DOF,
@@ -132,8 +128,27 @@ enum karmanDataEnum
     ROT_Z,
     ROLL,
     PITCH,
-    HEADING,
-    NUM_KARMAN_DATA,
+    HEADING,*/
+
+typedef union {
+    send_data_s component;
+    byte        full[NUM_BYTES_TO_SEND];
+}send_data_t;
+
+enum karmaSensorEnum
+{
+    TEMP1 = 0,
+    TEMP2,
+    TEMP3,
+    TEMP_PRESS_10DOF,
+    STRATOLOGGER,
+    GPS,
+    ANALOG_ACCEL,
+    ACCEL_10DOF,
+    MAG_10DOF,
+    GYRO_10DOF,
+    RPY_CALC_10DOF, /* Not really a sensor */
+    NUM_KARMAN_SENSORS,
 };
 
 typedef struct
@@ -151,6 +166,7 @@ elapsedMillis sinceWrite;
 unsigned long currTime;
 String dataFileName;
 unsigned long ml_index;
+float gSeaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA; /*initalize to value defined in Adafruit_Sensor.h*/
 
 
 SPISettings SPI_TCA1(1000000, MSBFIRST, SPI_MODE0);
@@ -168,7 +184,7 @@ Adafruit_BMP085_Unified         bmp085(1);
 Adafruit_L3GD20_Unified         l3gd20(2);
 Adafruit_LSM303_Accel_Unified   lsm303_accel(3);
 Adafruit_LSM303_Mag_Unified     lsm303_mag(4);
-Adafruit_10DOF                  objTenDOF();
+Adafruit_10DOF                  tenDOFObject;
 
 //Adafruit unified sensor library global sensor events
 sensors_event_t                pressureBMP085;
@@ -246,7 +262,7 @@ void setup() {
 void loop()
 {
     //get data and try to send and write after each grab
-    for (ml_index = 0; ml_index < NUM_KARMAN_DATA; ml_index++)
+    for (ml_index = 0; ml_index < NUM_KARMAN_SENSORS; ml_index++)
     {
         //TODO use this return value
         (void)get_karman_data(ml_index);
@@ -275,6 +291,10 @@ void send_check()
         sinceSend = 0;
 #endif
         gSendData->component.poll_flags &= 0; //Clear flags
+        gSendData->component.poll_flags |= DATA_SENT_BITMASK;
+        /*If any of the poll flags are set and the data sent bitmask is 1,
+         *Then we know when we write that the data was written before it was sent.
+         */
     }
     return;
 
@@ -283,71 +303,88 @@ void send_check()
 //TODO get all data, only getting temperature atm
 bool get_karman_data(byte data_number)
 {
+    /* TEMP3,
+    TEMP_PRESS_10DOF,
+    STRATOLOGGER,
+    GPS,
+    ANALOG_ACCEL,
+    ACCEL_10DOF,
+    MAG_10DOF,
+    GYRO_10DOF,
+    RPY_CALC_10DOF,*/
     bool retVal = false;
     switch (data_number)
     {
-    case TEMP1:
+    case TEMP1: /* SPI */
         thermocouple1.getTemperature(gSendData->component.temp1);
         gSendData->component.poll_flags |= TEMP1_BITMASK;
         retVal = true;
         break;
-    case TEMP2:
+    case TEMP2: /* SPI */
         thermocouple2.getTemperature(gSendData->component.temp2);
         gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
-        break;
-    case TEMP3:
+        break; 
+    case TEMP3: /* SPI */
         thermocouple3.getTemperature(gSendData->component.temp3);
         gSendData->component.poll_flags |= TEMP3_BITMASK;
         retVal = true;
         break;
-    case TEMP_10DOF:
-        gSendData->component.temp_10dof = 25.0;
-        gSendData->component.poll_flags |= TEMP_10DOF_BITMASK;
-        retVal = true;
-        break;
-    case ALT_PRESS:
-        gSendData->component.temp2 = 6.28;
+    case TEMP_PRESS_10DOF: /* TWI */
+        /*Introduces minimum of 15ms delay. 5ms for each TWI call. Two for getEvent, one for getTemperature*/
+        bmp085.getEvent(&pressureBMP085);
+        bmp085.getTemperature(&(gSendData->component.temp_10dof));   
+        gSendData->component.poll_flags |= PRESS_TEMP_BITMASK;
+        /* This is not very accurate at high altitude. See http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf page 16*/
+        gSendData->component.alt_press = bmp085.pressureToAltitude(gSeaLevelPressure, pressureBMP085.pressure);
         gSendData->component.poll_flags |= ALT_PRESS_BITMASK;
         retVal = true;
         break;
-    case ALT_STRAT:
-        gSendData->component.temp2 = 6.28;
+    case STRATOLOGGER: /* Serial */
+        gSendData->component.alt_strat = 6.28;
         gSendData->component.poll_flags |= ALT_STRAT_BITMASK;
         retVal = true;
         break;
-    case ALT_GPS:
-        gSendData->component.temp2 = 6.28;
+    case GPS: /* SPI */
+        gSendData->component.alt_gps = 6.28;
+        gSendData->component.lat = 45.0;
+        gSendData->component.lon = 75.0;
         gSendData->component.poll_flags |= ALT_GPS_BITMASK;
-        retVal = true;
-        break;
-    case LAT:
-        gSendData->component.temp2 = 6.28;
         gSendData->component.poll_flags |= LAT_BITMASK;
-        retVal = true;
-        break;
-    case LON:
-        gSendData->component.temp2 = 6.28;
         gSendData->component.poll_flags |= LON_BITMASK;
         retVal = true;
         break;
-    case ACCEL_X:
-        gSendData->component.temp2 = 6.28;
-        gSendData->component.poll_flags |= TEMP2_BITMASK;
+    case ANALOG_ACCEL: /* Analog pins */
+        gSendData->component.accel_x = 3.14;
+        gSendData->component.poll_flags |= ACCEL_X_BITMASK;
+        gSendData->component.accel_y = 6.28;
+        gSendData->component.poll_flags |= ACCEL_Y_BITMASK;
+        gSendData->component.accel_z = 9.42;
+        gSendData->component.poll_flags |= ACCEL_Z_BITMASK;
         retVal = true;
         break;
-    case ACCEL_Y:
-        gSendData->component.temp2 = 6.28;
-        gSendData->component.poll_flags |= TEMP2_BITMASK;
+    case ACCEL_10DOF: /* TWI */
+        lsm303_accel.getEvent(&accelLSM303);
+        gSendData->component.poll_flags |= ACCEL_10DOF_BITMASK;
+        retVal = true;
+        break; 
+    case MAG_10DOF: /* TWI */
+        lsm303_mag.getEvent(&magLSM303);
+        gSendData->component.poll_flags |= MAG_10DOF_BITMASK;
         retVal = true;
         break;
-    case ACCEL_Z:
-        gSendData->component.temp2 = 6.28;
-        gSendData->component.poll_flags |= TEMP2_BITMASK;
+    case GYRO_10DOF: /* TWI */
+        l3gd20.getEvent(&gyroL3GD20);
+        gSendData->component.poll_flags |= GYRO_10DOF_BITMASK;
+        retVal = true;
+        break;
+    case RPY_CALC_10DOF: /* Pure calculation */
+        tenDOFObject.fusionGetOrientation(&accelLSM303, &magLSM303, &(gWriteData.write_only.orientation));
+        /* No poll flag for RPY calculation */
         retVal = true;
         break;
     default:
-        //TODO add extra 10dof items combine some cases as they access the same chip
+        /*Error handler...? naaah */
         break;
     }
     return retVal;
@@ -379,6 +416,10 @@ void write_check()
             Serial.println("Error opening data file");
         }
         sinceWrite = 0;
+        /*Clear data sent bit for next write. The info about what was new since last send is already stored
+         *If the data sent bitmask wasn't set, then we know we wrote twice in a row before sending. 
+         */
+        gSendData->component.poll_flags &= (~DATA_SENT_BITMASK);
     }
 }
 
