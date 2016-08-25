@@ -24,7 +24,7 @@
 #define STRAT_PORT          (Serial2)
 #define STRAT_BAUD_RATE     (9600)
 #define STRAT_CONFIG        (SERIAL_8N1)
-#define CHARS_TO_PARSE      (14)
+#define STRAT_READ_LEN      (7)
 
 #define GPS_PORT            (Serial3)
 //TODO gps config
@@ -398,34 +398,22 @@ bool get_karman_data(byte data_number)
 int32_t parseStratoLogger(void)
 {
     int32_t altitude = 0;
-    int32_t tempAlt = 0;
-    /* Declare these char related variables static so they're preserved between function calls*/
-    /*delimit at carriage return and line feed. we will call atoi on the returned string */
-    static char delims[] = "\r\n";
-    static char *token = NULL;
-    /* Worst case, we're at 10,000 ft. That's 7 Chars.
-    *"10000\r\n" If we grab double that, we should get one good value minimum.
-    * So use a buffer of 14 chars plus 1 for the null character */
-    /* We need new buffer every time because strtok destroys it while parsing.
-    * It would be nice to have a static buffer, but it "needs" to go on the stack */
-    char rawStratString[CHARS_TO_PARSE + 1];
 
-    byte numBytesRead = STRAT_PORT.readBytes(rawStratString, CHARS_TO_PARSE); 
-    rawStratString[numBytesRead] = '\0'; /* Don't forget the null character!*/
+    char rawStratBuff[STRAT_READ_LEN + 1];
 
-    /* Get first token */
-    token = strtok(rawStratString, delims);
-    while (token != NULL)
+    if (STRAT_PORT.available() > 2 )
     {
-        tempAlt = atoi(token);
-        /* Is the new integerized token better (larger) than the old one?
-        * Ugh wait this will make the altiude garbage on the way down...
-        * TODO will it actually though? I'm not sure */
-        if (tempAlt > altitude)
+        byte numBytesRead = STRAT_PORT.readBytesUntil('\n', rawStratBuff, STRAT_READ_LEN);
+        if (rawStratBuff[numBytesRead] == '\r')
         {
-            altitude = tempAlt;
+            rawStratBuff[numBytesRead] = '\0';
+            altitude = atoi(rawStratBuff);
         }
-        token = strtok(NULL, delims);
+        else if (rawStratBuff[numBytesRead] == '\n')
+        {
+            rawStratBuff[numBytesRead - 1] = '\0';
+            altitude = atoi(rawStratBuff);
+        }
     }
 
     if (altitude > 0)
