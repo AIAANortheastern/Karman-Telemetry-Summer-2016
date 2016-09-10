@@ -17,30 +17,30 @@
 
 #define NUM_BYTES_TO_SEND   (52)
 
-#define XBEE_PORT           (Serial1)
+#define XBEE_PORT           (Serial3)
 #define XBEE_BAUD_RATE      (57600)
 #define XBEE_CONFIG         (SERIAL_8N1)
 
-#define STRAT_PORT          (Serial2)
+#define STRAT_PORT          (Serial1)
 #define STRAT_BAUD_RATE     (9600)
 #define STRAT_CONFIG        (SERIAL_8N1)
 #define STRAT_READ_LEN      (7)
 
-#define GPS_PORT            (Serial3)
+#define GPS_PORT            (Serial2)
 //TODO gps config
 
 /** PIN DEFINES */
-#define CS_TCA1             (4)
-#define CS_TCA2             (5)
+#define CS_TCA1             (5)
+#define CS_TCA2             (6)
 #define CS_TCA3             (6)
-#define XBEE_CTS_PIN        (3)
+#define XBEE_CTS_PIN        (4)
 #define RX_STRAT            (7) // RX_3
 #define RX_GPS              (9) // RX_2
 #define TX_GPS              (10)// TX_2
 #define CS_SDCARD           (15)
-#define Z_ADXL              (17)
-#define Y_ADXL              (20)
-#define X_ADXL              (22)
+#define Z_ADXL              (22)
+#define Y_ADXL              (21)
+#define X_ADXL              (20)
 
 /** POLL FLAG DEFINES **/
 #define TEMP1_BITMASK       (0x8000)
@@ -142,7 +142,7 @@ enum karmaSensorEnum
 {
     TEMP1 = 0,
     TEMP2,
-    TEMP3,
+    //TEMP3,
     TEMP_PRESS_10DOF,
     STRATOLOGGER,
     GPS,
@@ -174,13 +174,13 @@ float gSeaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA; /*initalize to value def
 
 SPISettings SPI_TCA1(1000000, MSBFIRST, SPI_MODE0);
 SPISettings SPI_TCA2(1000000, MSBFIRST, SPI_MODE0);
-SPISettings SPI_TCA3(1000000, MSBFIRST, SPI_MODE0);
+//SPISettings SPI_TCA3(1000000, MSBFIRST, SPI_MODE0);
 
 
 // Call hardware spi constructor for TCA's
 Thermocouple_Max31855 thermocouple1(CS_TCA1, SPI_TCA1);
 Thermocouple_Max31855 thermocouple2(CS_TCA2, SPI_TCA2);
-Thermocouple_Max31855 thermocouple3(CS_TCA3, SPI_TCA3);
+//Thermocouple_Max31855 thermocouple3(CS_TCA3, SPI_TCA3);
 
 //Call constructors for 10DOF chips
 Adafruit_BMP085_Unified         bmp085(1);
@@ -198,13 +198,16 @@ sensors_event_t                magLSM303;
 
 void setup() {
 
+    Serial.begin(9600);
     //setup sensors and get ready for transmit loop
     //Configure XBEE serial port
     XBEE_PORT.begin(XBEE_BAUD_RATE, XBEE_CONFIG);
     //Configure StratoLogger serial port
     STRAT_PORT.begin(STRAT_BAUD_RATE, STRAT_CONFIG);
 
-   SPI.begin();
+    //TODO start GPS_PORT
+
+    SPI.begin();
 
     // setup SD card recording.
     // Note begin() uses the SPI interface
@@ -266,6 +269,7 @@ void setup() {
 
 void loop()
 {
+    //Serial.print("HELLO WORLD\n");
     //get data and try to send and write after each grab
     for (ml_index = 0; ml_index < NUM_KARMAN_SENSORS; ml_index++)
     {
@@ -274,6 +278,8 @@ void loop()
         send_check();
         write_check();
     }
+
+    return;
 }
 
 
@@ -281,20 +287,14 @@ void send_check()
 {
     if (sinceSend > MILIS_BTWN_SEND && digitalRead(XBEE_CTS_PIN) == LOW)
     {
-        int numBytes = sizeof(send_data_t) / sizeof(byte);
-        XBEE_PORT.write((gSendData->full), NUM_BYTES_TO_SEND);
+       XBEE_PORT.write((gSendData->full), NUM_BYTES_TO_SEND);
 #ifdef DEBUG_MODE
-        float debugFloat;
-        for (int i = 0; i < numBytes / 4; i++)
-        {
-            memcpy(&debugFloat, (&(gSendData->full[4 * i])), 4);
-            Serial.print(debugFloat);
-            Serial.print('\n');
-        }
-        Serial.print(gSendData->component.poll_flags);
+        Serial.print(gSendData->component.alt_strat);
         Serial.print('\n');
-        sinceSend = 0;
+        Serial.print(gSendData->component.poll_flags, HEX);
+        Serial.print('\n');
 #endif
+        sinceSend = 0;
         gSendData->component.poll_flags &= 0; //Clear flags
         gSendData->component.poll_flags |= DATA_SENT_BITMASK;
         /*If any of the poll flags are set and the data sent bitmask is 1,
@@ -308,15 +308,6 @@ void send_check()
 //TODO get all data, only getting temperature atm
 bool get_karman_data(byte data_number)
 {
-    /* TEMP3,
-    TEMP_PRESS_10DOF,
-    STRATOLOGGER,
-    GPS,
-    ANALOG_ACCEL,
-    ACCEL_10DOF,
-    MAG_10DOF,
-    GYRO_10DOF,
-    RPY_CALC_10DOF,*/
     bool retVal = false;
     switch (data_number)
     {
@@ -330,11 +321,11 @@ bool get_karman_data(byte data_number)
         gSendData->component.poll_flags |= TEMP2_BITMASK;
         retVal = true;
         break; 
-    case TEMP3: /* SPI */
-        thermocouple3.getTemperature(gSendData->component.temp3);
-        gSendData->component.poll_flags |= TEMP3_BITMASK;
-        retVal = true;
-        break;
+ //   case TEMP3: /* SPI */
+ //       thermocouple3.getTemperature(gSendData->component.temp3);
+ //       gSendData->component.poll_flags |= TEMP3_BITMASK;
+ //       retVal = true;
+ //       break;
     case TEMP_PRESS_10DOF: /* TWI */
         /*Introduces minimum of 15ms delay. 5ms for each TWI call. Two for getEvent, one for getTemperature*/
         bmp085.getEvent(&pressureBMP085);
@@ -350,7 +341,7 @@ bool get_karman_data(byte data_number)
         gSendData->component.poll_flags |= ALT_STRAT_BITMASK;
         retVal = true;
         break;
-    case GPS: /* SPI? Serial? I've lost track */
+    case GPS: /* Serial*/
         gSendData->component.alt_gps = 6.28;
         gSendData->component.lat = 45.0;
         gSendData->component.lon = 75.0;
@@ -404,12 +395,12 @@ int32_t parseStratoLogger(void)
     if (STRAT_PORT.available() > 2 )
     {
         byte numBytesRead = STRAT_PORT.readBytesUntil('\n', rawStratBuff, STRAT_READ_LEN);
-        if (rawStratBuff[numBytesRead] == '\r')
+        if (rawStratBuff[numBytesRead - 1] == '\r')
         {
-            rawStratBuff[numBytesRead] = '\0';
+            rawStratBuff[numBytesRead - 1] = '\0';
             altitude = atoi(rawStratBuff);
         }
-        else if (rawStratBuff[numBytesRead] == '\n')
+        else if (rawStratBuff[numBytesRead - 1] == '\n')
         {
             rawStratBuff[numBytesRead - 1] = '\0';
             altitude = atoi(rawStratBuff);
@@ -449,6 +440,7 @@ void write_check()
 #endif
             data_file.println(write_string);
             data_file.close();
+            write_string = "";
         }
         else
         {
@@ -491,5 +483,6 @@ void getFormattedWriteString(String *pWriteString)
     *pWriteString += String(gWriteData.write_only.gyro->x) + ',';
     *pWriteString += String(gWriteData.write_only.gyro->y) + ',';
     *pWriteString += String(gWriteData.write_only.gyro->z) + ',';
+    *pWriteString += String('\n');
     return;
 }
