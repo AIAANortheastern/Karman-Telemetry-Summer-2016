@@ -10,8 +10,8 @@ Author:    Andrew Kaster
 
 
 #include <Adafruit_GPS.h>
-#include <Adafruit_LSM303_U.h>
 #include <Adafruit_Sensor.h>
+#include <Adafruit_LSM303_U.h>
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_10DOF.h>
@@ -53,8 +53,7 @@ Author:    Andrew Kaster
 #define RX_STRAT            (7) // RX_3 // Not connected or used
 #define RX_GPS              (9) // RX_2 // receive data from GPS : CV2
 #define TX_GPS              (10)// TX_2 // send data to GPS: CV2 - Not used
-// #define CS_SDCARD           (15) // NOT USED IN V2
-#define CS_SDCARD           (BUILTIN_SDCARD)    // Should be verified for V2
+#define CS_SDCARD           (15) // NOT USED IN V2
 // #define CS_SDCARD           (BUILTIN_SDCARD) // NOT USED IN V2
 #define Z_ADXL              (22) // CV2
 #define Y_ADXL              (21) // CV2
@@ -83,7 +82,7 @@ Author:    Andrew Kaster
 #define MILIS_BTWN_WRITE    (50)
 
 /* Uncomment for serial output */
-#define DEBUG_MODE
+//#define DEBUG_MODE
 
 //OLD INFO below. Double check with diagram before trusting
 
