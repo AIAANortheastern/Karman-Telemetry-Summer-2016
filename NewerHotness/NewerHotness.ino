@@ -8,10 +8,6 @@ Author:    Andrew Kaster
 // change SD card read/write - internal SD card
 // log data faster
 
-
-
-
-
 #include "libs/testLib.h"
 #include "libs/Adafruit_GPS.h"
 #include "libs/Adafruit_LSM303_U.h"
@@ -20,6 +16,7 @@ Author:    Andrew Kaster
 #include "libs/Adafruit_BMP085_U.h"
 #include "libs/Adafruit_10DOF.h"
 #include "libs/Thermocouple_Max31855.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <SPI.h>
