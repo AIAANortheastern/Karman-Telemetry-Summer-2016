@@ -9,13 +9,17 @@ Author:    Andrew Kaster
 // log data faster
 
 
-#include <Adafruit_GPS.h>
-#include <Adafruit_LSM303_U.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_L3GD20_U.h>
-#include <Adafruit_BMP085_U.h>
-#include <Adafruit_10DOF.h>
-#include "Thermocouple_Max31855.h"
+
+
+
+#include "libs/testLib.h"
+#include "libs/Adafruit_GPS.h"
+#include "libs/Adafruit_LSM303_U.h"
+#include "libs/Adafruit_Sensor.h"
+#include "libs/Adafruit_L3GD20_U.h"
+#include "libs/Adafruit_BMP085_U.h"
+#include "libs/Adafruit_10DOF.h"
+#include "libs/Thermocouple_Max31855.h"
 #include <string.h>
 #include <stdlib.h>
 #include <SPI.h>
