@@ -20,7 +20,9 @@
 
 #include "Adafruit_10DOF.h"
 
+#ifndef PI
 #define PI  (3.14159265F);
+#endif
 
 /***************************************************************************
  PRIVATE FUNCTIONS
