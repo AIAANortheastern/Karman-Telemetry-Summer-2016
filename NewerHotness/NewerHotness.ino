@@ -8,14 +8,14 @@ Author:    Andrew Kaster
 // change SD card read/write - internal SD card
 // log data faster
 
-#include "libs/testLib.h"
-#include "libs/Adafruit_GPS.h"
-#include "libs/Adafruit_LSM303_U.h"
-#include "libs/Adafruit_Sensor.h"
-#include "libs/Adafruit_L3GD20_U.h"
-#include "libs/Adafruit_BMP085_U.h"
-#include "libs/Adafruit_10DOF.h"
-#include "libs/Thermocouple_Max31855.h"
+#include "testLib.h"
+#include "Adafruit_GPS.h"
+#include "Adafruit_LSM303_U.h"
+#include "Adafruit_Sensor.h"
+#include "Adafruit_L3GD20_U.h"
+#include "Adafruit_BMP085_U.h"
+#include "Adafruit_10DOF.h"
+#include "Thermocouple_Max31855.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -47,6 +47,7 @@ Author:    Andrew Kaster
 
 
 /** PIN DEFINES */
+#define BUZZ               (20)
 #define CS_TCA1             (6) // V1: 5
 #define CS_TCA2             (5) // V1: 6
 #define CS_TCA3             (5) //*** DUAL PIN SELECT FIX ******
@@ -81,7 +82,7 @@ Author:    Andrew Kaster
 
 //TODO GOAL: 20Hz for both. Values will need tweaking for sure
 #define MILIS_BTWN_SEND     (25) // Should be limited by CTS
-#define MILIS_BTWN_WRITE    (50)
+#define MILIS_BTWN_WRITE    (5)
 
 /* Uncomment for serial output */
 #define DEBUG_MODE
@@ -225,6 +226,13 @@ void setup() {
     gSendData->component.padding = 0;
     analogReference(EXTERNAL); //DO NOT REMOVE UNDER ANY CIRCUMSTANCES
     // should have buzzer startup here
+    
+    pinMode(BUZZ, OUTPUT);
+    digitalWrite(BUZZ, HIGH);
+    delay(1000);
+    digitalWrite(BUZZ,LOW);
+
+
 #ifdef DEBUG_MODE
     Serial.begin(115200);
 #endif
@@ -353,14 +361,6 @@ void loop()
         (void)get_karman_data(ml_index);
         send_check();
         write_check();
-        while (GPS_PORT.available() > 0)
-        {
-            char discard = myGPS.read();
-#ifdef DEBUG_MODE_EXTRA
-            Serial.print(discard);
-#endif
-        }
-
     }
 
     return;
