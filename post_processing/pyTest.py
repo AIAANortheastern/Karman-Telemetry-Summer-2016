@@ -36,8 +36,6 @@ d = {
 
 
 buff = []
-
-
 alt = []
 pres = []
 
@@ -49,24 +47,22 @@ with open(fName, "r") as f:
     f.readline()
     f.readline()
 
-            
 
-
-    # for i, line in enumerate(f):
+    for i, line in enumerate(f):
+        pdb.set_trace()
+        
+        if i > 15000 and i < 18000:
+            split_line = line.split(',')
+            alt.append( 3.28 * float(split_line[5]))
+            pres.append(float(split_line[d['pressure']]))
+        
         # pdb.set_trace()
         
-        # if i > 15000 and i < 18000:
-            
-        #     alt.append( 3.28 * float(line.split(",")[5]))
-        #     pres.append(float(line.split(",")[d['pressure']]))
-        
-        # pdb.set_trace()
-        
-# # pdb.set_trace()
-# print(max(alt))
-# # print(alt[11000]*3.28)
-# xs = [x for x in range(len(alt))]
-# # plt.plot(xs, alt, label = 'altitude')
-# plt.plot(xs, pres, label = 'pressure')
-# plt.show()
+# pdb.set_trace()
+print(max(alt))
+# print(alt[11000]*3.28)
+xs = [x for x in range(len(alt))]
+# plt.plot(xs, alt, label = 'altitude')
+plt.plot(xs, pres, label = 'pressure')
+plt.show()
 
