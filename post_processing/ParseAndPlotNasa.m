@@ -23,7 +23,7 @@ mag_output = filter(Hd, magAccel);
 %load('NASASubscale.mat')
 
 figure;
-subplot(1, 1, 1)
+% subplot(1, 1, 1)
 subplot(4, 1, 1)
 plot(timestamp, altitude, '-');
 title('Altitude');
