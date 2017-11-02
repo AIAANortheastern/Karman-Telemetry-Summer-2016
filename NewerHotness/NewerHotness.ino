@@ -60,7 +60,7 @@ Author:    Andrew Kaster
 // #define CS_SDCARD           (BUILTIN_SDCARD) // NOT USED IN V2
 #define Z_ADXL              (22) // CV2
 #define Y_ADXL              (21) // CV2
-#define X_ADXL              (20) // CV2
+#define X_ADXL              (17) // CV2
 
 /** POLL FLAG DEFINES **/
 #define TEMP1_BITMASK       (0x8000)
@@ -85,7 +85,7 @@ Author:    Andrew Kaster
 #define MILIS_BTWN_WRITE    (5)
 
 /* Uncomment for serial output */
-#define DEBUG_MODE
+//#define DEBUG_MODE
 
 //OLD INFO below. Double check with diagram before trusting
 
@@ -361,10 +361,20 @@ void loop()
         (void)get_karman_data(ml_index);
         send_check();
         write_check();
-    }
 
+        while (GPS_PORT.available() > 0)
+        {
+            char discard = myGPS.read();
+            #ifdef DEBUG_MODE_EXTRA
+                Serial.print(discard);
+            #endif
+        }
+
+    }
     return;
 }
+
+
 
 
 void send_check()
@@ -393,10 +403,10 @@ bool get_karman_data(byte data_number)
     {
     case TEMP1: /* SPI */
         thermocouple1.getTemperature(gSendData->component.temp1);
-#ifdef DEBUG_MODE
-        Serial.print("Temperature 1");
-        Serial.println(gSendData->component.temp1);
-#endif
+// #ifdef DEBUG_MODE
+        // Serial.print("Temperature 1");
+        // Serial.println(gSendData->component.temp1);
+// #endif
         gSendData->component.poll_flags |= TEMP1_BITMASK;
         retVal = true;
         break;
@@ -527,14 +537,16 @@ void write_check()
     {
         //TODO get write-only 10DOF data
         File data_file = SD.open(dataFileName.c_str(), FILE_WRITE);
+   
+
         if (data_file)
         {
             currTime = millis();
-            //Fill write_string with data from gWriteData
+            // Fill write_string with data from gWriteData
             getFormattedWriteString(&write_string);
-#ifdef DEBUG_MODE
-            Serial.println(String("SD card Data: \n" + write_string));
-#endif
+            #ifdef DEBUG_MODE
+                Serial.println(String(write_string));
+            #endif
             data_file.println(write_string);
             data_file.close();
             write_string = "";
@@ -542,7 +554,12 @@ void write_check()
         else
         {
 #ifdef DEBUG_MODE
+            #ifdef NOSD
             Serial.println("Error opening data file");
+            #endif
+            getFormattedWriteString(&write_string);
+            Serial.println(String(write_string));
+            write_string = "";
 #endif
         }
         sinceWrite = 0;

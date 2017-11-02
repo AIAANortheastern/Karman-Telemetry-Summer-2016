@@ -24,7 +24,7 @@
 #define LSM303_DEBUG
 */
 
-static float _lsm303Accel_MG_LSB     = 0.001F;   // 1, 2, 4 or 12 mg per lsb
+static float _lsm303Accel_MG_LSB     = 0.012F;   // 1, 2, 4 or 12 mg per lsb
 static float _lsm303Mag_Gauss_LSB_XY = 1100.0F;  // Varies with gain
 static float _lsm303Mag_Gauss_LSB_Z  = 980.0F;   // Varies with gain
 
@@ -156,6 +156,11 @@ bool Adafruit_LSM303_Accel_Unified::begin()
 
   // Enable the accelerometer (100Hz)
   write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG1_A, 0x57);
+
+  //TODO - TO(DID)
+  // This was added to set the accel to +- 8g
+  // Also change line 27 for conversion factor 
+  write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG4_A, 0x30);
 
   // LSM303DLHC has no WHOAMI register so read CTRL_REG1_A back to check
   // if we are connected or not
@@ -568,6 +573,7 @@ bool Adafruit_LSM303::begin()
 
   // Enable the accelerometer
   write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG1_A, 0x27);
+
 
   // Enable the magnetometer
   write8(LSM303_ADDRESS_MAG, LSM303_REGISTER_MAG_MR_REG_M, 0x00);
