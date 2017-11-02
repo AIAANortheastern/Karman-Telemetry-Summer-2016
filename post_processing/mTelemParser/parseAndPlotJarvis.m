@@ -1,20 +1,59 @@
 close all
+%{
+"currTime": 0,
+"temp1": 1,
+"temp2": 2,
+"temp3": 3,
+"temp_10dof": 4,
+"alt_press": 5,
+"alt_strat": 6,
+"alt_gps": 7,
+"lat": 8,
+"lat": 9,
+"accel_x": 10,
+"accel_y": 11,
+"accel_z": 12,
+"poll_flags": 13,
+"pressure": 14,
+"orientation.roll": 15,
+"orientation.pitch": 16,
+"orientation.heading": 16,
+"accel_x": 18,
+"accel_y": 19,
+"accel_z": 20,
+"mag_x": 21,
+"mag_y": 22,
+"mag_z": 23,
+"gyro_x": 24,
+"gyro_y": 25,
+"gyro_z": 26 
+%}
+
+
+
+
+
 wholefile = csvread('karman_nh_flight1.CSV', 1, 0);
 lower = 15000;
 upper = 18000;
 timestamp = wholefile(15000:18000,1);
 t0 = timestamp(1);
 timestamp = (timestamp - t0)./(1000);
-writeTime = diff(timestamp).*1000;
+ts = diff(timestamp).*1000;
 
 altitude = wholefile(lower:upper,6);
 x_accel = wholefile(lower:upper,19)./10;
 y_accel = wholefile(lower:upper,20)./10;
 z_accel = wholefile(lower:upper,21)./10;
+% pres_accel = diff(diff(altitude)./ts(1:end - 1))./ts(1:end - 2);
 
 d = fdesign.lowpass('Fp,Fst,Ap,Ast',3,5,0.5,20,100);
+d2 = fdesign.lowpass('Fp,Fst,Ap,Ast',3,5,0.5,30,100);
 Hd = design(d,'equiripple');
+Hd2 = design(d2,'equiripple');
 x_output = filter(Hd,x_accel);
+alt_lowpass = filter(Hd, altitude);
+altVel = filter(Hd, diff(altitude)./(writeTime/1000));
 
 magAccel = ((x_accel.^2) + (y_accel.^2) + (z_accel.^2)).^0.5;
 
@@ -22,8 +61,11 @@ mag_output = filter(Hd, magAccel);
 
 %load('NASASubscale.mat')
 
+
+
+
+
 figure;
-% subplot(1, 1, 1)
 subplot(4, 1, 1)
 plot(timestamp, altitude, '-');
 title('Altitude');
@@ -88,14 +130,14 @@ title('Magnitude of Acceleration -- Low pass filter (-20dB)');
 xlabel('Time (s)');
 ylabel('Magnitude of Acceleration (g)');
 plot(timestamp, ones(size(timestamp)), '--r');
+
+
+figure;
+plot(timestamp(1:end-1),ts, '.');
+title('Write time');
+xlabel('Time (s)');
+ylabel('Write time (ms)');
+ylim([0, 100]);
 hold off
-
-
-
-% plot(timestamp(1:end-1),writeTime);
-% title('Altitude');
-% xlabel('Time (s)');
-% ylabel('Altitude (m)');
-
 
 
