@@ -33,12 +33,13 @@ close all
 
 % f = 'karman_nh_flight1.CSV';
 f = 'DATA3.csv';
+f = 'UpperStage_Raw_Data.csv';
 
 wholefile = csvread(f, 1, 0);
 % lower = 15000;
 % upper = 18000;
-lower = 1;
-upper = 800;
+lower = 36000;
+upper = 41400;
 % timestamp = wholefile(15000:18000,1);
 timestamp = wholefile(lower:upper,1);
 t0 = timestamp(1);
@@ -49,6 +50,9 @@ altitude = wholefile(lower:upper,6);
 x_accel = wholefile(lower:upper,19)./10;
 y_accel = wholefile(lower:upper,20)./10;
 z_accel = wholefile(lower:upper,21)./10;
+temp1 = wholefile(lower:upper,1);
+temp2 = wholefile(lower:upper,2);
+temp3 = wholefile(lower:upper,3);
 % pres_accel = diff(diff(altitude)./ts(1:end - 1))./ts(1:end - 2);
 
 d = fdesign.lowpass('Fp,Fst,Ap,Ast',3,5,0.5,20,100);
@@ -142,6 +146,19 @@ title('Write time');
 xlabel('Time (s)');
 ylabel('Write time (ms)');
 ylim([0, 100]);
-hold off
+
+
+% figure;
+% % subplot(2,1,1);
+% hold on
+% plot(timestamp, temp1, '.');
+% plot(timestamp, temp2, '.');
+% plot(timestamp, temp3, '.');
+% hold off
+% title('Temps');
+% xlabel('Time (s)');
+% ylabel('temperature');
+% % ylim([0, 100]);
+% hold off
 
 
