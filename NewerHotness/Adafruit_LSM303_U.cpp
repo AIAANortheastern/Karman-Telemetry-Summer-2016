@@ -22,6 +22,7 @@
 
 /* enabling this #define will enable the debug print blocks
 #define LSM303_DEBUG
+EDIT LINE 164 FOR CHANGING SENSITIVITY
 */
 
 static float _lsm303Accel_MG_LSB     = 0.012F;   // 1, 2, 4 or 12 mg per lsb
@@ -158,7 +159,7 @@ bool Adafruit_LSM303_Accel_Unified::begin()
   write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG1_A, 0x57);
 
   //TODO - TO(DID)
-  // This was added to set the accel to +- 8g
+  // This was added to set the accel to +- 16g
   // Also change line 27 for conversion factor 
   write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG4_A, 0x30);
 

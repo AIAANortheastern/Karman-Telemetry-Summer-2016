@@ -99,6 +99,7 @@ Author:    Andrew Kaster
 
 //SPI Clock speed max ~1-2 MHz (4 for yolo)
 
+// data size (- struct): 
 struct tenDOF_data_s
 {
     float *pressure;
@@ -110,6 +111,7 @@ struct tenDOF_data_s
 
 typedef tenDOF_data_s tenDOF_data_t;
 
+// data sizes: 52 bytes
 struct send_data_s {
 
     float temp1;
@@ -190,7 +192,7 @@ elapsedMillis sinceWrite;
 unsigned long currTime;
 String dataFileName;
 unsigned long ml_index;
-float gSeaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA; /*initalize to value defined in Adafruit_Sensor.h*/
+float gSeaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA; /*initialize to value defined in Adafruit_Sensor.h*/
 
 
 SPISettings SPI_TCA1(1000000, MSBFIRST, SPI_MODE0);
@@ -531,8 +533,7 @@ int32_t parseStratoLogger(void)
 
 // Records all data currently in the global data structure to the SD card
 // With a timestamp instead of poll flags
-void write_check()
-{
+void write_check() {
     if (sinceWrite > MILIS_BTWN_WRITE)
     {
         //TODO get write-only 10DOF data
@@ -553,14 +554,14 @@ void write_check()
         }
         else
         {
-#ifdef DEBUG_MODE
-            #ifdef NOSD
-            Serial.println("Error opening data file");
+            #ifdef DEBUG_MODE
+                #ifdef NOSD
+                    Serial.println("Error opening data file");
+                #endif
+                getFormattedWriteString(&write_string);
+                Serial.println(String(write_string));
+                write_string = "";
             #endif
-            getFormattedWriteString(&write_string);
-            Serial.println(String(write_string));
-            write_string = "";
-#endif
         }
         sinceWrite = 0;
         /*Clear data sent bit for next write. The info about what was new since last send is already stored
@@ -601,3 +602,5 @@ void getFormattedWriteString(String *pWriteString)
     *pWriteString += String(gWriteData.write_only.gyro->z) + ',';
     return;
 }
+
+void getFormattedWriteStringByte()
